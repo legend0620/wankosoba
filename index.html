@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>わんこそばチャレンジ</title>
+<style>
+  *{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  body{
+    margin:0;
+    font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    background:linear-gradient(180deg,#fff8eb 0%,#ffe5b8 100%);
+    color:#4b2e1f;
+    text-align:center;
+  }
+
+  #game{
+    width:min(100%, 460px);
+    min-height:100vh;
+    margin:auto;
+    padding:16px 14px 24px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  h1{
+    margin:4px 0 10px;
+    font-size:30px;
+    line-height:1.2;
+  }
+
+  #hud{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  .panel{
+    background:rgba(255,255,255,0.85);
+    border-radius:18px;
+    padding:12px 10px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+  }
+
+  .panel-label{
+    font-size:12px;
+    font-weight:700;
+    opacity:0.8;
+    margin-bottom:4px;
+  }
+
+  .panel-value{
+    font-size:30px;
+    font-weight:900;
+    line-height:1;
+  }
+
+  #timeValue{
+    color:#d83b2d;
+  }
+
+  #characterWrap{
+    position:relative;
+    margin-top:10px;
+  }
+
+  #character{
+    width:min(72vw, 300px);
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    filter:drop-shadow(0 10px 12px rgba(0,0,0,0.15));
+  }
+
+  #bowlArea{
+    margin-top:4px;
+    position:relative;
+  }
+
+  #bowl{
+    width:min(48vw, 190px);
+    cursor:pointer;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    transition:transform 0.06s ease;
+    filter:drop-shadow(0 10px 10px rgba(0,0,0,0.18));
+  }
+
+  #bowl:active{
+    transform:scale(0.96);
+  }
+
+  #combo{
+    margin-top:8px;
+    font-size:22px;
+    font-weight:800;
+  }
+
+  #guide{
+    margin-top:6px;
+    font-size:14px;
+    font-weight:700;
+    opacity:0.8;
+  }
+
+  #controls{
+    margin-top:14px;
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    border:none;
+    border-radius:14px;
+    padding:13px 18px;
+    font-size:17px;
+    font-weight:800;
+    cursor:pointer;
+    background:#ff8c42;
+    color:#fff;
+    box-shadow:0 8px 16px rgba(255,140,66,0.28);
+  }
+
+  button.secondary{
+    background:#fff;
+    color:#4b2e1f;
+    box-shadow:0 8px 16px rgba(0,0,0,0.08);
+  }
+
+  button:disabled{
+    opacity:0.6;
+    cursor:default;
+  }
+
+  #effects{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+
+  .floatText{
+    position:absolute;
+    left:50%;
+    top:58%;
+    transform:translate(-50%, 0);
+    font-size:30px;
+    font-weight:900;
+    color:#7a2a00;
+    text-shadow:
+      -2px -2px 0 #fff,
+      2px -2px 0 #fff,
+      -2px 2px 0 #fff,
+      2px 2px 0 #fff;
+    animation:floatUp 0.7s ease-out forwards;
+    white-space:nowrap;
+  }
+
+  @keyframes floatUp{
+    0%{
+      opacity:0;
+      transform:translate(-50%, 12px) scale(0.8);
+    }
+    15%{
+      opacity:1;
+    }
+    100%{
+      opacity:0;
+      transform:translate(-50%, -60px) scale(1.1);
+    }
+  }
+
+  #comboBanner{
+    position:absolute;
+    left:50%;
+    top:80px;
+    transform:translateX(-50%);
+    background:linear-gradient(90deg,#ff8a00,#ffb400);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:22px;
+    font-weight:900;
+    opacity:0;
+    pointer-events:none;
+    box-shadow:0 10px 18px rgba(255,136,0,0.3);
+  }
+
+  #comboBanner.show{
+    animation:comboPop 0.9s ease;
+  }
+
+  @keyframes comboPop{
+    0%{
+      opacity:0;
+      transform:translateX(-50%) translateY(-12px) scale(0.8);
+    }
+    25%{
+      opacity:1;
+      transform:translateX(-50%) translateY(0) scale(1.05);
+    }
+    70%{
+      opacity:1;
+    }
+    100%{
+      opacity:0;
+      transform:translateX(-50%) translateY(-8px) scale(0.96);
+    }
+  }
+
+  .overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(60,34,18,0.42);
+    backdrop-filter:blur(4px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    z-index:20;
+  }
+
+  .card{
+    width:100%;
+    max-width:390px;
+    background:rgba(255,255,255,0.96);
+    border-radius:24px;
+    padding:24px 18px 20px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.18);
+  }
+
+  .card h2{
+    margin:0 0 10px;
+    font-size:30px;
+  }
+
+  .card p{
+    margin:0 0 14px;
+    line-height:1.7;
+    font-size:15px;
+  }
+
+  .resultScore{
+    font-size:44px;
+    font-weight:900;
+    color:#c74d00;
+    margin:10px 0 8px;
+  }
+
+  .subPanel{
+    margin-top:10px;
+    background:#fff7ef;
+    border-radius:16px;
+    padding:12px 10px;
+  }
+
+  .hidden{
+    display:none;
+  }
+
+  @media (max-height: 720px){
+    h1{ font-size:26px; }
+    #character{ width:min(62vw, 250px); }
+    #bowl{ width:min(40vw, 165px); }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="effects"></div>
+  <div id="comboBanner">10コンボ！</div>
+
+  <h1>わんこそばチャレンジ</h1>
+
+  <div id="hud">
+    <div class="panel">
+      <div class="panel-label">スコア</div>
+      <div class="panel-value" id="score">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">のこり時間</div>
+      <div class="panel-value" id="timeValue">30</div>
+    </div>
+  </div>
+
+  <div id="characterWrap">
+    <img id="character" src="idle.png" alt="キャラクター">
+  </div>
+
+  <div id="bowlArea">
+    <img id="bowl" src="bowl_full.png" alt="そば">
+    <div id="combo">コンボ 0</div>
+    <div id="guide">🍜 そばをどんどんタップ！</div>
+  </div>
+
+  <div id="controls">
+    <button id="startButton">スタート</button>
+    <button id="bgmButton" class="secondary">BGM ON</button>
+  </div>
+
+  <div id="startOverlay" class="overlay">
+    <div class="card">
+      <h2>わんこそば開幕！</h2>
+      <p>
+        制限時間は30秒。<br>
+        そばをタップして、できるだけたくさん食べよう！<br>
+        連続で素早く食べるとコンボで高得点！
+      </p>
+      <button id="startOverlayButton">ゲームスタート</button>
+    </div>
+  </div>
+
+  <div id="resultOverlay" class="overlay hidden">
+    <div class="card">
+      <h2>結果発表！</h2>
+      <div class="resultScore" id="finalScore">0杯</div>
+      <p id="resultMessage">いい食べっぷり！</p>
+
+      <div class="subPanel">
+        <div class="panel-label">ハイスコア</div>
+        <div class="panel-value" id="highScore">0</div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <button id="retryButton">もう一回遊ぶ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<audio id="bgm" src="bgm.mp3" loop></audio>
+
+<script>
+  let score = 0;
+  let combo = 0;
+  let time = 30;
+  let playing = false;
+  let timer = null;
+  let lastClick = 0;
+  let canTap = true;
+  let bgmEnabled = true;
+
+  const comboWindow = 700;
+  const highScoreKey = "wankosoba_highscore";
+
+  const scoreEl = document.getElementById("score");
+  const timeEl = document.getElementById("timeValue");
+  const comboEl = document.getElementById("combo");
+  const guideEl = document.getElementById("guide");
+  const charEl = document.getElementById("character");
+  const bowlEl = document.getElementById("bowl");
+  const effectsEl = document.getElementById("effects");
+  const comboBannerEl = document.getElementById("comboBanner");
+
+  const startButton = document.getElementById("startButton");
+  const bgmButton = document.getElementById("bgmButton");
+  const startOverlay = document.getElementById("startOverlay");
+  const startOverlayButton = document.getElementById("startOverlayButton");
+  const resultOverlay = document.getElementById("resultOverlay");
+  const finalScoreEl = document.getElementById("finalScore");
+  const resultMessageEl = document.getElementById("resultMessage");
+  const highScoreEl = document.getElementById("highScore");
+  const retryButton = document.getElementById("retryButton");
+  const bgm = document.getElementById("bgm");
+
+  bgm.volume = 0.5;
+
+  function getHighScore() {
+    return Number(localStorage.getItem(highScoreKey) || 0);
+  }
+
+  function setHighScore(value) {
+    localStorage.setItem(highScoreKey, String(value));
+  }
+
+  function updateHUD() {
+    scoreEl.innerText = score;
+    timeEl.innerText = time;
+    comboEl.innerText = "コンボ " + combo;
+  }
+
+  function resetDisplay() {
+    score = 0;
+    combo = 0;
+    time = 30;
+    lastClick = 0;
+    canTap = true;
+    updateHUD();
+    charEl.src = "idle.png";
+    bowlEl.src = "bowl_full.png";
+    guideEl.innerText = "🍜 そばをどんどんタップ！";
+  }
+
+  function playBGM() {
+    if (!bgmEnabled) return;
+    bgm.play().catch(() => {});
+  }
+
+  function stopBGM() {
+    bgm.pause();
+    bgm.currentTime = 0;
+  }
+
+  function toggleBGM() {
+    bgmEnabled = !bgmEnabled;
+    bgmButton.innerText = bgmEnabled ? "BGM ON" : "BGM OFF";
+
+    if (!bgmEnabled) {
+      bgm.pause();
+    } else if (playing) {
+      playBGM();
+    }
+  }
+
+  function showFloatText(text) {
+    const div = document.createElement("div");
+    div.className = "floatText";
+    div.textContent = text;
+    div.style.left = (46 + Math.random() * 8) + "%";
+    div.style.top = (56 + Math.random() * 6) + "%";
+    effectsEl.appendChild(div);
+    setTimeout(() => div.remove(), 750);
+  }
+
+  function showComboBanner() {
+    comboBannerEl.textContent = combo + "コンボ！";
+    comboBannerEl.classList.remove("show");
+    void comboBannerEl.offsetWidth;
+    comboBannerEl.classList.add("show");
+  }
+
+  function startGame() {
+    clearInterval(timer);
+    stopBGM();
+
+    playing = true;
+    resultOverlay.classList.add("hidden");
+    startOverlay.classList.add("hidden");
+    startButton.disabled = true;
+
+    resetDisplay();
+    updateHUD();
+    playBGM();
+
+    timer = setInterval(() => {
+      time--;
+      updateHUD();
+
+      if (time <= 0) {
+        endGame();
+      }
+    }, 1000);
+  }
+
+  function endGame() {
+    playing = false;
+    clearInterval(timer);
+    timer = null;
+    stopBGM();
+    startButton.disabled = false;
+
+    const currentHigh = getHighScore();
+    if (score > currentHigh) {
+      setHighScore(score);
+    }
+
+    finalScoreEl.innerText = score + "杯";
+    highScoreEl.innerText = getHighScore();
+
+    let message = "いい食べっぷり！";
+    if (score >= 80) {
+      message = "伝説級！わんこそば王や！";
+    } else if (score >= 60) {
+      message = "かなり強い！店員さんもびっくり！";
+    } else if (score >= 40) {
+      message = "お見事！テンポよく食べられた！";
+    } else if (score >= 25) {
+      message = "なかなかやるやん！まだ伸びる！";
+    } else {
+      message = "次はもっと速く食べよう！";
+    }
+
+    resultMessageEl.innerText = message;
+    resultOverlay.classList.remove("hidden");
+  }
+
+  bowlEl.addEventListener("click", () => {
+    if (!playing || !canTap) return;
+
+    canTap = false;
+
+    const now = Date.now();
+
+    if (now - lastClick < comboWindow) {
+      combo++;
+    } else {
+      combo = 1;
+    }
+
+    lastClick = now;
+
+    const gain = 1 + Math.floor(combo / 5);
+    score += gain;
+    updateHUD();
+
+    if (combo % 10 === 0) {
+      showComboBanner();
+      showFloatText("ズルズル!! +" + gain);
+    } else {
+      showFloatText("+" + gain + "杯");
+    }
+
+    charEl.src = "eat.png";
+    bowlEl.src = "bowl_empty.png";
+    guideEl.innerText = "ズルッ！";
+
+    setTimeout(() => {
+      charEl.src = "idle.png";
+    }, 180);
+
+    setTimeout(() => {
+      if (playing) {
+        bowlEl.src = "bowl_full.png";
+        guideEl.innerText = "🍜 そばをどんどんタップ！";
+        canTap = true;
+      }
+    }, 150);
+  });
+
+  startButton.addEventListener("click", startGame);
+  startOverlayButton.addEventListener("click", startGame);
+  retryButton.addEventListener("click", startGame);
+  bgmButton.addEventListener("click", toggleBGM);
+
+  highScoreEl.innerText = getHighScore();
+  resetDisplay();
+</script>
+</body>
+</html>
