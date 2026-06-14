@@ -76,6 +76,16 @@
     filter:drop-shadow(0 10px 12px rgba(0,0,0,0.15));
   }
 
+  #character.eatMotion{
+    animation:eatMotion 0.18s ease-out;
+  }
+
+  @keyframes eatMotion{
+    0%{ transform:scale(1) translateY(0); }
+    45%{ transform:scale(1.04) translateY(4px); }
+    100%{ transform:scale(1) translateY(0); }
+  }
+
   #bowlArea{
     margin-top:4px;
     position:relative;
@@ -345,9 +355,18 @@
   let lastClick = 0;
   let canTap = true;
   let bgmEnabled = true;
+  let characterTimer = null;
+  let bowlTimer = null;
 
   const comboWindow = 700;
   const highScoreKey = "wankosoba_highscore";
+
+  const imagesToPreload = [
+    "idle.png",
+    "eat.png",
+    "bowl_full.png",
+    "bowl_empty.png"
+  ];
 
   const scoreEl = document.getElementById("score");
   const timeEl = document.getElementById("timeValue");
@@ -371,6 +390,66 @@
 
   bgm.volume = 0.5;
 
+  imagesToPreload.forEach((src) => {
+    const img = new Image();
+    img.src = src;
+  });
+
+  function clearActionTimers() {
+    if (characterTimer) {
+      clearTimeout(characterTimer);
+      characterTimer = null;
+    }
+
+    if (bowlTimer) {
+      clearTimeout(bowlTimer);
+      bowlTimer = null;
+    }
+  }
+
+  function setCharacterImage(src) {
+    if (charEl.getAttribute("src") !== src) {
+      charEl.src = src;
+    }
+  }
+
+  function playEatAnimation() {
+    if (characterTimer) {
+      clearTimeout(characterTimer);
+      characterTimer = null;
+    }
+
+    setCharacterImage("eat.png");
+
+    charEl.classList.remove("eatMotion");
+    void charEl.offsetWidth;
+    charEl.classList.add("eatMotion");
+
+    characterTimer = setTimeout(() => {
+      if (playing) {
+        setCharacterImage("idle.png");
+      }
+      charEl.classList.remove("eatMotion");
+      characterTimer = null;
+    }, 220);
+  }
+
+  function resetBowlAfterEat() {
+    if (bowlTimer) {
+      clearTimeout(bowlTimer);
+      bowlTimer = null;
+    }
+
+    bowlTimer = setTimeout(() => {
+      if (playing) {
+        bowlEl.src = "bowl_full.png";
+        guideEl.innerText = "🍜 そばをどんどんタップ！";
+        canTap = true;
+      }
+      bowlTimer = null;
+    }, 150);
+  }
+
   function getHighScore() {
     return Number(localStorage.getItem(highScoreKey) || 0);
   }
@@ -386,12 +465,14 @@
   }
 
   function resetDisplay() {
+    clearActionTimers();
     score = 0;
     combo = 0;
     time = 30;
     lastClick = 0;
     canTap = true;
     updateHUD();
+    charEl.classList.remove("eatMotion");
     charEl.src = "idle.png";
     bowlEl.src = "bowl_full.png";
     guideEl.innerText = "🍜 そばをどんどんタップ！";
@@ -460,6 +541,9 @@
 
   function endGame() {
     playing = false;
+    clearActionTimers();
+    charEl.classList.remove("eatMotion");
+    charEl.src = "idle.png";
     clearInterval(timer);
     timer = null;
     stopBGM();
@@ -490,7 +574,7 @@
     resultOverlay.classList.remove("hidden");
   }
 
-  bowlEl.addEventListener("click", () => {
+  function eatSoba() {
     if (!playing || !canTap) return;
 
     canTap = false;
@@ -516,21 +600,15 @@
       showFloatText("+" + gain + "杯");
     }
 
-    charEl.src = "eat.png";
+    playEatAnimation();
     bowlEl.src = "bowl_empty.png";
     guideEl.innerText = "ズルッ！";
+    resetBowlAfterEat();
+  }
 
-    setTimeout(() => {
-      charEl.src = "idle.png";
-    }, 180);
-
-    setTimeout(() => {
-      if (playing) {
-        bowlEl.src = "bowl_full.png";
-        guideEl.innerText = "🍜 そばをどんどんタップ！";
-        canTap = true;
-      }
-    }, 150);
+  bowlEl.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    eatSoba();
   });
 
   startButton.addEventListener("click", startGame);
